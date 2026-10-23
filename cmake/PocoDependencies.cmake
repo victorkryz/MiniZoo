@@ -1,0 +1,41 @@
+include(FetchContent)
+
+# Keep the embedded POCO build focused on the components MiniZoo uses.
+set(ENABLE_TESTS OFF CACHE BOOL "Disable POCO tests" FORCE)
+set(ENABLE_SAMPLES OFF CACHE BOOL "Disable POCO samples" FORCE)
+set(ENABLE_LONG_RUNNING_TESTS OFF CACHE BOOL "Disable long-running POCO tests" FORCE)
+
+set(ENABLE_ACTIVERECORD OFF CACHE BOOL "Disable POCO ActiveRecord" FORCE)
+set(ENABLE_ACTIVERECORD_COMPILER OFF CACHE BOOL "Disable POCO ActiveRecord compiler" FORCE)
+set(ENABLE_ENCODINGS OFF CACHE BOOL "Disable POCO Encodings" FORCE)
+set(ENABLE_JWT OFF CACHE BOOL "Disable POCO JWT" FORCE)
+set(ENABLE_MONGODB OFF CACHE BOOL "Disable POCO MongoDB" FORCE)
+set(ENABLE_NET OFF CACHE BOOL "Disable POCO Net" FORCE)
+set(ENABLE_NETSSL OFF CACHE BOOL "Disable POCO NetSSL" FORCE)
+set(ENABLE_PAGECOMPILER OFF CACHE BOOL "Disable POCO PageCompiler" FORCE)
+set(ENABLE_PAGECOMPILER_FILE2PAGE OFF CACHE BOOL "Disable POCO File2Page" FORCE)
+set(ENABLE_POCODOC OFF CACHE BOOL "Disable POCO documentation tool" FORCE)
+set(ENABLE_PROMETHEUS OFF CACHE BOOL "Disable POCO Prometheus" FORCE)
+set(ENABLE_REDIS OFF CACHE BOOL "Disable POCO Redis" FORCE)
+set(ENABLE_SEVENZIP OFF CACHE BOOL "Disable POCO SevenZip" FORCE)
+set(ENABLE_ZIP OFF CACHE BOOL "Disable POCO Zip" FORCE)
+
+set(ENABLE_CRYPTO ON CACHE BOOL "Enable POCO Crypto" FORCE)
+set(ENABLE_DATA ON CACHE BOOL "Enable POCO Data" FORCE)
+set(ENABLE_DATA_SQLITE ON CACHE BOOL "Enable POCO SQLite connector" FORCE)
+set(ENABLE_UTIL ON CACHE BOOL "Enable POCO Util" FORCE)
+set(ENABLE_XML ON CACHE BOOL "Enable POCO XML dependency used by Util" FORCE)
+set(ENABLE_JSON ON CACHE BOOL "Enable POCO JSON dependency used by Util" FORCE)
+
+set(ENABLE_DATA_MYSQL OFF CACHE BOOL "Disable POCO MySQL connector" FORCE)
+set(ENABLE_DATA_ODBC OFF CACHE BOOL "Disable POCO ODBC connector" FORCE)
+set(ENABLE_DATA_POSTGRESQL OFF CACHE BOOL "Disable POCO PostgreSQL connector" FORCE)
+
+FetchContent_Declare(
+    poco
+    GIT_REPOSITORY https://github.com/pocoproject/poco.git
+    GIT_TAG poco-1.14.2-release
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(poco)

@@ -1,0 +1,28 @@
+BasedOnStyle: LLVM
+UseTab: Never
+IndentWidth: 4
+TabWidth: 4
+ColumnLimit: 0
+Standard: c++17
+SortIncludes: false
+
+BreakBeforeBraces: Allman
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeElse: true
+  BeforeCatch: true
+  IndentBraces: false
+
+AllowShortIfStatementsOnASingleLine: false
+IndentCaseLabels: false
+AccessModifierOffset: -4
+NamespaceIndentation: All
+FixNamespaceComments: false
+ReferenceAlignment: Left
+PointerAlignment: Left

@@ -1,0 +1,56 @@
+name: Windows CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build configuration"
+        required: true
+        default: "Release"
+
+env:
+  BUILD_TYPE: Release
+  BUILD_CONFIGURATION: Release
+  BUILD_DIRECTORY: build
+  INSTALL_DIRECTORY: dist
+  APP_NAME: MiniZoo
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC dev environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Clone vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg $env:GITHUB_WORKSPACE\vcpkg
+
+      - name: Bootstrap vcpkg
+        working-directory: ${{github.workspace}}/vcpkg
+        run: .\bootstrap-vcpkg.bat
+
+      - name: Configure (CMake + vcpkg toolchain)
+        working-directory: ${{github.workspace}}
+        run: |
+          cmake -S . -B ${{env.BUILD_DIRECTORY}} -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:GITHUB_WORKSPACE\vcpkg\scripts\buildsystems\vcpkg.cmake" `
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        working-directory: ${{github.workspace}}
+        run: |
+          cmake --build ${{env.BUILD_DIRECTORY}} --config ${{env.BUILD_CONFIGURATION}}
+
+      - name: Run ${{env.APP_NAME}}
+        working-directory: ${{github.workspace}}/${{env.BUILD_DIRECTORY}}
+        run: bin/${{env.APP_NAME}}
+
+               
+            
