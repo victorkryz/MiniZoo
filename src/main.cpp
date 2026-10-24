@@ -15,6 +15,8 @@ int main()
 {
     try
     {
+        Database::SQLiteConnectorGuard sqliteConnector;
+
         std::cout << std::endl
                   << "Welcome to MiniZoo!" << std::endl
                   << std::endl;

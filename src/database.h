@@ -6,6 +6,18 @@
 
 namespace Database
 {
+    class SQLiteConnectorGuard
+    {
+    public:
+        SQLiteConnectorGuard();
+        ~SQLiteConnectorGuard() noexcept;
+
+        SQLiteConnectorGuard(const SQLiteConnectorGuard&) = delete;
+        SQLiteConnectorGuard& operator=(const SQLiteConnectorGuard&) = delete;
+        SQLiteConnectorGuard(SQLiteConnectorGuard&&) = delete;
+        SQLiteConnectorGuard& operator=(SQLiteConnectorGuard&&) = delete;
+    };
+
     struct AnimalInfo
     {
         std::string species;

@@ -1,10 +1,8 @@
 #include "database.h"
 
-#include <Poco/Exception.h>
 #include <Poco/Data/LOB.h>
 #include <Poco/Data/Session.h>
 #include <Poco/Data/SQLite/Connector.h>
-#include <Poco/Data/SQLite/SQLiteException.h>
 #include <Poco/Data/Transaction.h>
 
 #include <cstddef>
@@ -15,6 +13,16 @@
 namespace Database
 {
     constexpr auto DatabaseFileName = "minizoo.db";
+
+    SQLiteConnectorGuard::SQLiteConnectorGuard()
+    {
+        Poco::Data::SQLite::Connector::registerConnector();
+    }
+
+    SQLiteConnectorGuard::~SQLiteConnectorGuard() noexcept
+    {
+        Poco::Data::SQLite::Connector::unregisterConnector();
+    }
 
     void CreateSchema(Poco::Data::Session& session)
     {
@@ -120,83 +128,51 @@ namespace Database
 
     void Initialize()
     {
-        Poco::Data::SQLite::Connector::registerConnector();
+        Poco::Data::Session session("SQLite", DatabaseFileName);
+        session << "PRAGMA foreign_keys = ON", Poco::Data::Keywords::now;
 
-        try
-        {
-            {
-                Poco::Data::Session session("SQLite", DatabaseFileName);
-                session << "PRAGMA foreign_keys = ON", Poco::Data::Keywords::now;
-
-                CreateSchema(session);
-                PopulateDatabaseWithAnimals(session);
-            }
-
-            Poco::Data::SQLite::Connector::unregisterConnector();
-        }
-        catch (const Poco::Exception&)
-        {
-            Poco::Data::SQLite::Connector::unregisterConnector();
-            throw;
-        }
+        CreateSchema(session);
+        PopulateDatabaseWithAnimals(session);
     }
 
     std::vector<AnimalInfo> ReadAnimalsWithEnclosures()
     {
-        Poco::Data::SQLite::Connector::registerConnector();
+        std::vector<std::string> species, names, enclosures;
 
-        try
+        Poco::Data::Session session("SQLite", DatabaseFileName);
+        session << R"sql(
+            SELECT anm.species AS species,
+                   anm.name AS nme,
+                   enc.name AS enclosure
+            FROM Animals anm
+            INNER JOIN Enclosures enc
+                ON anm.enclosure_id = enc.id
+        )sql",
+            Poco::Data::Keywords::into(species),
+            Poco::Data::Keywords::into(names),
+            Poco::Data::Keywords::into(enclosures),
+            Poco::Data::Keywords::now;
+
+        std::vector<AnimalInfo> animals;
+        animals.reserve(species.size());
+
+        for (std::size_t index = 0; index < species.size(); ++index)
         {
-            std::vector<std::string> species, names, enclosures;
-
-            {
-                Poco::Data::Session session("SQLite", DatabaseFileName);
-                session << R"sql(
-                SELECT anm.species AS species,
-                       anm.name AS nme,
-                       enc.name AS enclosure
-                FROM Animals anm
-                INNER JOIN Enclosures enc
-                    ON anm.enclosure_id = enc.id
-            )sql",
-                    Poco::Data::Keywords::into(species),
-                    Poco::Data::Keywords::into(names),
-                    Poco::Data::Keywords::into(enclosures),
-                    Poco::Data::Keywords::now;
-            }
-
-            std::vector<AnimalInfo> animals;
-            animals.reserve(species.size());
-
-            for (std::size_t index = 0; index < species.size(); ++index)
-            {
-                animals.push_back({species[index], names[index], enclosures[index]});
-            }
-
-            Poco::Data::SQLite::Connector::unregisterConnector();
-            return animals;
+            animals.push_back({species[index], names[index], enclosures[index]});
         }
-        catch (const Poco::Exception&)
-        {
-            Poco::Data::SQLite::Connector::unregisterConnector();
-            throw;
-        }
+
+        return animals;
     }
 
     void MoveAnimalToEnclosure(
         const std::string& species,
         const std::string& enclosureName)
     {
-        Poco::Data::SQLite::Connector::registerConnector();
+        std::string boundEnclosureName = enclosureName,
+                    boundSpecies = species;
 
-        try
-        {
-            std::string boundEnclosureName = enclosureName,
-                        boundSpecies = species;
-
-            {
-                Poco::Data::Session session("SQLite", DatabaseFileName);
-                session << R"sql(
+        Poco::Data::Session session("SQLite", DatabaseFileName);
+        session << R"sql(
                 UPDATE Animals
                 SET enclosure_id = (
                     SELECT id
@@ -208,36 +184,22 @@ namespace Database
                     Poco::Data::Keywords::use(boundEnclosureName),
                     Poco::Data::Keywords::use(boundSpecies),
                     Poco::Data::Keywords::now;
-            }
-
-            Poco::Data::SQLite::Connector::unregisterConnector();
-        }
-        catch (const Poco::Exception&)
-        {
-            Poco::Data::SQLite::Connector::unregisterConnector();
-            throw;
-        }
     }
 
     void AddEncryptedAnimalNotes(
         const std::vector<AnimalNoteToStore>& notes)
     {
-        Poco::Data::SQLite::Connector::registerConnector();
+        Poco::Data::Session session("SQLite", DatabaseFileName);
+        Poco::Data::Transaction transaction(session);
 
-        try
+        for (const AnimalNoteToStore& note : notes)
         {
-            {
-                Poco::Data::Session session("SQLite", DatabaseFileName);
-                Poco::Data::Transaction transaction(session);
+            std::string species = note.species;
+            const std::vector<unsigned char> encryptedBytes(
+                note.encryptedNote.begin(), note.encryptedNote.end());
+            Poco::Data::BLOB encryptedNote(encryptedBytes);
 
-                for (const AnimalNoteToStore& note : notes)
-                {
-                    std::string species = note.species;
-                    const std::vector<unsigned char> encryptedBytes(
-                        note.encryptedNote.begin(), note.encryptedNote.end());
-                    Poco::Data::BLOB encryptedNote(encryptedBytes);
-
-                    session << R"sql(
+            session << R"sql(
                     INSERT INTO AnimalNotes (animal_id, encrypted_note)
                     SELECT id, ?
                     FROM Animals
@@ -246,32 +208,18 @@ namespace Database
                         Poco::Data::Keywords::use(encryptedNote),
                         Poco::Data::Keywords::use(species),
                         Poco::Data::Keywords::now;
-                }
-
-                transaction.commit();
-            }
-
-            Poco::Data::SQLite::Connector::unregisterConnector();
         }
-        catch (const Poco::Exception&)
-        {
-            Poco::Data::SQLite::Connector::unregisterConnector();
-            throw;
-        }
+
+        transaction.commit();
     }
 
     std::vector<EncryptedAnimalNote> ReadEncryptedAnimalNotes()
     {
-        Poco::Data::SQLite::Connector::registerConnector();
+        std::vector<std::string> species, animalNames;
+        std::vector<Poco::Data::BLOB> encryptedNotes;
 
-        try
-        {
-            std::vector<std::string> species, animalNames;
-            std::vector<Poco::Data::BLOB> encryptedNotes;
-
-            {
-                Poco::Data::Session session("SQLite", DatabaseFileName);
-                session << R"sql(
+        Poco::Data::Session session("SQLite", DatabaseFileName);
+        session << R"sql(
                 SELECT animal.species,
                        animal.name,
                        note.encrypted_note
@@ -284,27 +232,19 @@ namespace Database
                     Poco::Data::Keywords::into(animalNames),
                     Poco::Data::Keywords::into(encryptedNotes),
                     Poco::Data::Keywords::now;
-            }
 
-            std::vector<EncryptedAnimalNote> notes;
-            notes.reserve(encryptedNotes.size());
+        std::vector<EncryptedAnimalNote> notes;
+        notes.reserve(encryptedNotes.size());
 
-            for (std::size_t index = 0; index < encryptedNotes.size(); ++index)
-            {
-                const auto& content = encryptedNotes[index].content();
-                notes.push_back({species[index],
-                                 animalNames[index],
-                                 {content.begin(), content.end()}});
-            }
-
-            Poco::Data::SQLite::Connector::unregisterConnector();
-            return notes;
-        }
-        catch (const Poco::Exception&)
+        for (std::size_t index = 0; index < encryptedNotes.size(); ++index)
         {
-            Poco::Data::SQLite::Connector::unregisterConnector();
-            throw;
+            const auto& content = encryptedNotes[index].content();
+            notes.push_back({species[index],
+                             animalNames[index],
+                             {content.begin(), content.end()}});
         }
+
+        return notes;
     }
 
 } // namespace Database
